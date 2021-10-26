@@ -1,0 +1,11 @@
+*
+!*.gitignore
+!*.cpp
+!*.hpp
+!*.cproject
+!*.project
+!*.app
+!*/
+**/.autopilot
+**/syn
+**/impl
