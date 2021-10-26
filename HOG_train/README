@@ -1,0 +1,11 @@
+Train the network. The const. sized positive and negative
+objects in the database will be read by the HOG algorithm
+which is also on the hardware later. The path to the database 
+must be correct.
+Start /build/HOG_train
+to execute the hog algorithm on the input database. The 
+generated output files are the input for:
+train.py
+This script trains a SVM with the generated values and export
+then to a cpp file "acc_classifier.cpp" These values will be
+pasted in the HLS code for the detection algorithm 

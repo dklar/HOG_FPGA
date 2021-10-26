@@ -1,0 +1,22 @@
+Enthält mehrere unabhängige Projekte für die Erstellung einer SVM mit HOG inputs
+
+1. HOG_Capture      Enthält Bilder von Menschen (positiv) und negative Beispiele
+                    Markiert positive und negative Beispiele und schreibt sie als 
+                    Liste in einer textdatei mit dem Schema:
+                    "Vollständiger_Pfad|x|y|w|h"
+
+2. zuschneiden.py   Liest die Datei von HOG_Capture ein und schneidet die Bilder
+                    auf dem ausgewählten bereich zu. Speichert diese in einen
+                    Ordner "Database" o.ä.
+
+3. HOG_train        enthält den HOG algorithmus der auf hardware implementiert wird
+                    dieses Programm lädt die Daten aus HOG_Capture wendet HOG an
+                    und speichert dies die Werte mit direktem Zugang damit dass SVN
+                    trainiert werden kann
+
+ 
+4. train.py         Lädt die Werte aus HOG_train (positive.dat und negative.dat )
+                    und trainiert den Classifier (trainAndSave)
+                    Schreibt eine C datei für HLS une eine Numpy detai für python
+
+
