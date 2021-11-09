@@ -196,10 +196,10 @@ void classifyHOG_apr(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageS
 	}
 }
 
-void computeHOG_apr(uint8_t *image,pixelValue hist[800*128],int w,int h) {
+void computeHOG_apr(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int w,int h) {
 	int Gy, Gx;
 	ComputeHOG_loop:
-	for (int y = 0; y < 128; y++) {
+	for (int y = 0; y < SLIDE_HEIGHT; y++) {
 		for (int x = 0; x < w; x++) {
 #pragma HLS loop_tripcount avg=0 max=0
 			if (y == 0 || y == 127) {
@@ -379,7 +379,6 @@ void normBlock_L2(float (*BlockArray)[MAX_WIDTH / 16][angles * 4]) {
 	}
 }
 
-
 void normBlock_L1(int (*BlockArray)[MAX_WIDTH / 16][angles * 4]) {
 	NormLoop:
 	for (int i = 0; i < SLIDE_HEIGHT / 16; i++) {
@@ -396,20 +395,34 @@ void normBlock_L1(int (*BlockArray)[MAX_WIDTH / 16][angles * 4]) {
 	}
 }
 
-void HOG_apr(uint8_t *picture, objects *objectList,int scale,int w,int h){
-	uint8_t imageBuffer[MAX_WIDTH*128];
-	pixelValue hist[MAX_WIDTH * 128];
-	float BlockArray[SLIDE_HEIGHT/16][MAX_WIDTH/16][angles*4];
-	//if (w >MAX_WIDTH) w = MAX_WIDTH;
 
+/**
+ * @brief Calculated (the HOG) and classify (SVM) the image.
+ * 
+ * @param picture pointer to the picture data
+ * @param objectList pointer to the at the beginning empty List of detected objects
+ * @param scale Current scale factor for downsizeing the image. Used to determine the correct position 
+ * @param w Current width of the image data. By adapting the image pyramid the value is shrinking. 
+ * @param h Current height of the image data. By adapting the image pyramid the value is shrinking.
+ */
+void HOG_apr(uint8_t *picture, objects *objectList,int scale,int w,int h){
+	/*
+    Copy parts of the data from Master interface to locale block ram.
+    These data are then processed:
+        Compute the gradient magnitude.
+        Sort the gradient & magnitude per block
+        Normalize the blocks
+        Calculate the SVM score.
+    This will be repeated until the complete data from the iamge is read.
+    It is advantageous that the height of the image is a multiple of 128
+    */
 	pictureSlideLoop:
-	for (int i=0;i<(h/128);i++){
-#pragma HLS loop_tripcount avg=0 max=0
+	for (int i=0;i<(h/SLIDE_HEIGHT);i++){
+		#pragma HLS loop_tripcount avg=0 max=0
+		uint8_t imageBuffer[MAX_WIDTH*SLIDE_HEIGHT];
+		pixelValue hist[MAX_WIDTH * SLIDE_HEIGHT];
+		float BlockArray[SLIDE_HEIGHT/16][MAX_WIDTH/16][angles*4];
 		memcpy(imageBuffer, picture+i*w*128, w*128*sizeof(uint8_t));
-		/*memcpyLoop:
-		for(int j = 0 ; j<w*128; j++){
-			imageBuffer[j] = picture[i*w*128+j];
-		}*/
 		computeHOG_apr(imageBuffer,hist,w,h);
 		BlockSort(hist,BlockArray);
         normBlock_L1(BlockArray);

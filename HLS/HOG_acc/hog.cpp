@@ -357,6 +357,16 @@ void normBlock_L1(float (*BlockArray)[MAX_WIDTH / 16][angles * 4]) {
 }
 
 void hog_acc(uint8_t *picture, objects *objectList){
+    /*
+    Copy parts of the data from Master interface to locale block ram.
+    These data are then processed:
+        Compute the gradient magnitude.
+        Sort the gradient & magnitude per block
+        Normalize the blocks
+        Calculate the SVM score.
+    This will be repeated until the complete data from the iamge is read.
+    It is advantageous that the height of the image is a multiple of 128
+    */
 	for (int i=0;i<(MAX_HEIGHT/128);i++){
 		uint8_t imageBuffer[MAX_WIDTH*SLIDE_HEIGHT];
 		pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT];
