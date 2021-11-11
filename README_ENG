@@ -1,0 +1,23 @@
+Contains  
+HLS 3 projects in the folder HLS
+The other 3 folders are for getting the values for the SVM
+
+HOG_Behaviour
+    is for visualizing the HOG algorithm
+
+HOG_Capture
+    The SVM need trained data wich have to be a constant size and labeled
+    Therefore some data is prepared in the Database folder
+    If you want to generate own positive/negative data, build the cmake
+    project. After that run the python script execute.py with the correct
+    path to some unlabeled picture database. A window should be open
+    where you can mark the objects you want to detect.
+
+HOG_Train
+    This project takes the labeled and constant sized images adapt the HOG
+    algorithm and saves the output values in a intermediate file.
+    The train.py file takes this intermediate file and train ths SVM classifier
+    The output of this file are the SVM weights, wich must copied in the HLS
+    projects.
+    More information are in the README of this project
+
