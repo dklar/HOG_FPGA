@@ -7,11 +7,11 @@ objects (humans) in a database. If you think the list is long enough
 kill this python script because it will call every picture in the 
 database.
 '''
-hog_capture_path = "/home/dennis/Schreibtisch/HOG_train_Aug/HOG_Capture/build/HOG_Capture "
+hog_capture_path = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_Capture/build/HOG_Capture "
 
 def validFile(filename: str) -> bool:
     """Validate file type"""
-    if  filename.lower.endswith(".png") or filename.endswith(".jpeg") or filename.endswith(".jpg") or filename.endswith(".bmp"): 
+    if  filename.lower().endswith(".png") or filename.endswith(".jpeg") or filename.endswith(".jpg") or filename.endswith(".bmp"): 
         return True
     else:
         return False
@@ -65,7 +65,7 @@ def megaNegativeList(directory):
                 f.write(directory+filename+"|"+str(x)+"|"+str(y)+"|64|128\n")
     
 
-createPositiveList("/home/dennis/Downloads/GRAZ/Graz02_personen/")
+createPositiveList("/home/dennis/Downloads/GRAZ/HOG_database/Graz02_personen/")
 #createPositiveList("/home/dennis/Downloads/person/")
 #createNegativeList("/home/dennis/Downloads/none/")
 #megaNegativeList("/home/dennis/Downloads/GRAZ/Graz02_none/")

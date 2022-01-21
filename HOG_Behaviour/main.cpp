@@ -229,7 +229,6 @@ Mat Draw_HOG_Values(Mat image,int nrOrientation,int pixelPerCell,int cellPerBloc
     cout << "Cells  in Y direction       : " << cellPerHeight <<"\n";
     cout << "Blocks in X direction       : " << NumberBlocksX <<"\n";
     cout << "Blocks in Y direction       : " << NumberBlocksY <<"\n";
-    cout << "Size of feature vector      : " << NumberBlocksX *NumberBlocksY *36 <<" values\n";
     cout << "================HOG-Algorithmus==================\n";
 
     for (int i = 0; i < nrOrientation; i++)
@@ -483,7 +482,6 @@ std::vector<obj> SVM_Detection_visual(Mat orginalImage,int pixelPerCell,int cell
     cout << "Cells  in Y direction       : " << cellPerHeight <<"\n";
     cout << "Blocks in X direction       : " << NumberBlocksX <<"\n";
     cout << "Blocks in Y direction       : " << NumberBlocksY <<"\n";
-    cout << "Size of feature vector      : " << NumberBlocksX *NumberBlocksY *36 <<" values\n";
     cout << "================HOG-Algorithm==================\n";
 
     for (int i = 0; i < nrOrientation; i++)
@@ -914,7 +912,6 @@ Mat SVM_Detection(Mat orginalImage,int pixelPerCell,int cellPerBlock){
     cout << "Cells  in Y direction       : " << cellPerHeight <<"\n";
     cout << "Blocks in X direction       : " << NumberBlocksX <<"\n";
     cout << "Blocks in Y direction       : " << NumberBlocksY <<"\n";
-    cout << "Size of feature vector      : " << NumberBlocksX *NumberBlocksY *36 <<" values\n";
     cout << "================HOG-Algorithm==================\n";
 
     for (int i = 0; i < nrOrientation; i++)
@@ -1076,14 +1073,10 @@ Mat SVM_Detection(Mat orginalImage,int pixelPerCell,int cellPerBlock){
 }
 
 void test(){
-
-    //string imagePath = "/home/dennis/Bilder/800x600_fuss.jpg";
-    string imagePath = "/home/dennis/Downloads/person/person_188.bmp";
+    string imagePath = "/home/dennis/Databases/HOG_database/Graz02_personen/person_188.bmp";
     Mat image = imread(imagePath,IMREAD_GRAYSCALE);
     Mat image2 = imread(imagePath);
-
     Mat imgScaled,imgScaled2;
-
     std:vector<obj> allObjects;
 
     for (int i = 10; i > 1; i--){
@@ -1092,14 +1085,13 @@ void test(){
         cv::resize(image, imgScaled, Size(resizeWidth,resizeHeight), 0., 0., cv::INTER_LINEAR);
         cv::resize(image2, imgScaled2, Size(resizeWidth,resizeHeight), 0., 0., cv::INTER_LINEAR);
         std::cout << "\nNew Size "<< imgScaled.rows << " x " << imgScaled.cols<< " scale "<< i / 10.<<std::endl;
-        //std::vector<obj> obj_vector = SVM_Detection_visual(imgScaled2,8,2,i/10.);
-        std::vector<obj> obj_vector = SVM_Detection_visual_apr(imgScaled2,8,2,i/10.);
+        std::vector<obj> obj_vector = SVM_Detection_visual(imgScaled2,8,2,i/10.);
+        //std::vector<obj> obj_vector = SVM_Detection_visual_apr(imgScaled2,8,2,i/10.);
         for (obj o : obj_vector){
             allObjects.push_back(o);
         }
     }
     for (obj o : allObjects){
-        
         int xPos = o.x*16/o.scale;
         int yPos = o.y*16/o.scale;
         int sWidth = 32/o.scale;
@@ -1113,49 +1105,12 @@ void test(){
     waitKey();
 }
 
-void test2(){
-
-	string imagePath = "/home/dennis/Downloads/person/person_188.bmp";
-    Mat image1,image2,imgScaled1,imgScaled2;
-    resize(imread(imagePath,IMREAD_GRAYSCALE), image1, Size(800, 600), 0., 0.,cv::INTER_LINEAR);
-    resize(imread(imagePath), image2, Size(800, 600), 0., 0.,cv::INTER_LINEAR);
-    
-    std:vector<obj> allObjects;
-
-    for (int i = 10; i > 1; i--){
-        int resizeWidth  = (int)image1.cols*i / 10.;
-        int resizeHeight = (int)image1.rows*i / 10.; 
-        cv::resize(image1, imgScaled1, Size(resizeWidth,resizeHeight), 0., 0., cv::INTER_LINEAR);
-        cv::resize(image2, imgScaled2, Size(resizeWidth,resizeHeight), 0., 0., cv::INTER_LINEAR);
-        std::cout << "New Size "<< imgScaled1.rows << " x " << imgScaled1.cols<< " scale "<< i / 10.<<std::endl;
-        //std::vector<obj> obj_vector = SVM_Detection_visual(imgScaled2,8,2,i/10.);
-        std::vector<obj> obj_vector = SVM_Detection_visual_apr(imgScaled2,8,2,i/10.);
-        for (obj o : obj_vector){
-            allObjects.push_back(o);
-        }
-    }
-    for (obj o : allObjects){
-        cout << "Origin: "<<o.x << " " << o.y << " " << o.h << " " << o.w<< " " << o.scale << "\n";
-        int xPos = o.x*16/o.scale;
-        int yPos = o.y*16/o.scale;
-        int sWidth = 32/o.scale;
-        int sHeight = 128/o.scale;
-        cout << "Scaled: "<< xPos << " " << yPos <<" " <<  sWidth << " " << sHeight<<"\n";
-        cv::Rect human(xPos,yPos,sWidth,sHeight);
-        cv::rectangle(image2,human,cv::Scalar(255,0,0),1);
-    }
-    imshow("Detected",image2);
-    waitKey();
-}
-
-
 int main(int, char**) {
-    string path = "/home/dennis/Bilder/mensch.jpg";
-    Mat image = imread(path,IMREAD_GRAYSCALE);
-    // Mat hog = Draw_HOG_Values(image,9,8,2);
-    // imwrite("orginal.jpg",image);
-    // imwrite("hog.jpg",hog);
-    // Mat hogSVM = SVM_Detection(image,8,2);
+    string imagePath = "/home/dennis/Databases/HOG_database/Graz02_personen/person_188.bmp";
+    Mat image = imread(imagePath,IMREAD_GRAYSCALE);
+    Mat hog = Draw_HOG_Values(image,9,8,2);
+    imwrite("orginal.jpg",image);
+    imwrite("hog.jpg",hog);
     test();
     return 0;
 }

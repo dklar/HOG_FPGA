@@ -29,37 +29,37 @@
 		<link>
 			<name>source</name>
 			<type>2</type>
-			<location>/home/dennis/VivadoHLS/HOG_apr/.apc/.src</location>
+			<location>/home/dennis/Schreibtisch/HOG_FPGA/HLS/HOG_apr/.apc/.src</location>
 		</link>
 		<link>
 			<name>testbench</name>
 			<type>2</type>
-			<location>/home/dennis/VivadoHLS/HOG_apr/.apc/.tb</location>
+			<location>/home/dennis/Schreibtisch/HOG_FPGA/HLS/HOG_apr/.apc/.tb</location>
 		</link>
 		<link>
 			<name>solution1/constraints</name>
 			<type>2</type>
-			<location>/home/dennis/VivadoHLS/HOG_apr/solution1/.tcls</location>
+			<location>/home/dennis/Schreibtisch/HOG_FPGA/HLS/HOG_apr/solution1/.tcls</location>
 		</link>
 		<link>
 			<name>source/hog_apr.cpp</name>
 			<type>1</type>
-			<location>/home/dennis/VivadoHLS/HOG_apr/hog_apr.cpp</location>
+			<location>/home/dennis/Schreibtisch/HOG_FPGA/HLS/HOG_apr/hog_apr.cpp</location>
 		</link>
 		<link>
 			<name>solution1/constraints/.xml.directive</name>
 			<type>1</type>
-			<location>/home/dennis/VivadoHLS/HOG_apr/solution1/solution1.directive</location>
+			<location>/home/dennis/Schreibtisch/HOG_FPGA/HLS/HOG_apr/solution1/solution1.directive</location>
 		</link>
 		<link>
 			<name>solution1/constraints/directives.tcl</name>
 			<type>1</type>
-			<location>/home/dennis/VivadoHLS/HOG_apr/solution1/directives.tcl</location>
+			<location>/home/dennis/Schreibtisch/HOG_FPGA/HLS/HOG_apr/solution1/directives.tcl</location>
 		</link>
 		<link>
 			<name>solution1/constraints/script.tcl</name>
 			<type>1</type>
-			<location>/home/dennis/VivadoHLS/HOG_apr/solution1/script.tcl</location>
+			<location>/home/dennis/Schreibtisch/HOG_FPGA/HLS/HOG_apr/solution1/script.tcl</location>
 		</link>
 	</linkedResources>
 </projectDescription>
