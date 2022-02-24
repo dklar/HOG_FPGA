@@ -49,11 +49,12 @@ inline int MODULO(int a, int b) {
  * Berechne fuer ein Window den Gradienten, den Bin und die magnitude,
  *
  */
-void computeHOG(uint8_t *image,pixelValue hist[800*128]) {
+void computeHOG(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT]) {
 	int Gy, Gx;
+    ComputeHOG_loop:
 	for (int y = 0; y < 128; y++) {
 		for (int x = 0; x < MAX_WIDTH; x++) {
-
+#pragma HLS loop_tripcount avg=0 max=0
 			if (y == 0 || y == 127) {
 				Gy = 0;
 			} else {
@@ -94,11 +95,13 @@ void computeHOG(uint8_t *image,pixelValue hist[800*128]) {
 	}
 }
 
-void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide,objects *objectList)
+void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide,objects *objectList,int scale)
 {
-
     const int cellPerWidth = MAX_WIDTH / pixelPerCell;
     const int NumberBlocksX= cellPerWidth / cellPerBlock;
+    const int limit = NumberBlocksX - BlocksPerWindowX;
+
+    float Intercept = -0.17;
     float weights[] = {0.38659216557681786, -0.17765256024752688, -0.3303109657526789, -0.25685432111625195, 0.6965258327808991,
                 -0.08955468271447518, -0.011380397634332682, 0.025097102256305622, 0.46277236012643636, 0.6239231917421081, 0.46487964753040406,
                 -0.13799357500253623, -0.016888500558488596, 0.26172621720559996, 0.04821951747212017, 0.023656928749301538, -0.09692267641617822,
@@ -204,7 +207,11 @@ void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide
 					-0.25182901292877646, 0.22377247767878664, 0.13174290244996129, -0.08724915060954978, 0.184482358308178, -0.018755009481445345, 0.420233065032769,
 					0.023870824515311785, -0.24030519570419334, 0.0070455750948298845, -0.18607131849161787, -0.4026559363258481, 0.451649477716899, 0.3161942735857426,
 					-0.10959069168891905, 0.46920913640698086, -0.09992398369524878, -0.23731278522978635, -0.12420591251762565, 0.16174820601180687, 0.05484168980114606,
-					-0.0029854343638303867, -0.09302569175396457, -0.005812628339265864, 0.5739443257879806, -0.20277091082172455, -0.6033265948146478, -0.044816772956346534, 0.13734789524227345, -0.2788068062548434, 0.8652443965414969, -0.1389424381991476, -0.0541155944185761, -0.3658988078980402, -0.25602879904476633, -0.04059762213535433, 0.03860567853272342, -0.41307298943843657, 0.5654007641552559, 0.3084167083550476, -0.015899089498987943, -0.23915989254705972, -0.0875785326731337, -0.3293186448450582, -0.1494523347141757, 0.13122326662078787, -0.3963222697597505, 0.16568721069763934, 0.07831922071880147, -0.23642551642955556, -0.5323549326325336, -0.19303437641895083,
+					-0.0029854343638303867, -0.09302569175396457, -0.005812628339265864, 0.5739443257879806, -0.20277091082172455, -0.6033265948146478, -0.044816772956346534,
+					0.13734789524227345, -0.2788068062548434, 0.8652443965414969, -0.1389424381991476, -0.0541155944185761, -0.3658988078980402, -0.25602879904476633,
+					-0.04059762213535433, 0.03860567853272342, -0.41307298943843657, 0.5654007641552559, 0.3084167083550476, -0.015899089498987943, -0.23915989254705972,
+					-0.0875785326731337, -0.3293186448450582, -0.1494523347141757, 0.13122326662078787, -0.3963222697597505, 0.16568721069763934, 0.07831922071880147,
+					-0.23642551642955556, -0.5323549326325336, -0.19303437641895083,
                 -0.6334049634734248, 0.3780328448217177, 0.43260697017547695, -0.5566757339736071, -0.2891021281769048, 0.32713705318666614, -0.038193181968280886,
                 -0.24371619949403647, -0.2027757050975611, -0.48595475330680715, 0.23813433735249184, 0.5091249351072491, -0.1514564211472638, 0.5114392934656641,
                 -0.2639271989329006, 0.2936938161871326, 0.2402499412504562, 0.5921375453792335, -0.3737050088729943, -0.3841575806427036, 0.18699332286949258,
@@ -263,7 +270,7 @@ void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide
 
     int counter = 0;
 
-    for (int windowX = 0; windowX < NumberBlocksX - BlocksPerWindowX; windowX++)
+    for (int windowX = 0; windowX < limit; windowX++)
     {
         float sum = -0.17;
         for (int y = 0; y < 8; y++)
@@ -272,7 +279,12 @@ void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide
             {
                 for (int i = 0; i < 36; i++)
                 {
-                    sum += BlockArray[y][x + windowX][i] * weights[y * 144 + x * 36 + i];
+                	float product;
+#pragma HLS RESOURCE variable=product core=Mul_LUT
+#pragma HLS RESOURCE variable=product core=FMul_nodsp
+                	product = BlockArray[y][x + windowX][i] * weights[y * 144 + x * 36 + i];
+
+                    sum += product;
                 }
             }
         }
@@ -280,6 +292,7 @@ void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide
             objectList[counter].score = sum;
             objectList[counter].x = windowX * 16;
             objectList[counter].y = imageSlide;
+            objectList[counter].scale = scale;
             counter++;
         }
     }
@@ -356,7 +369,7 @@ void normBlock_L1(float (*BlockArray)[MAX_WIDTH / 16][angles * 4]) {
 	}
 }
 
-void hog_acc(uint8_t *picture, objects *objectList){
+void hog_acc(uint8_t *picture, objects *objectList,int scale,int w,int h){
     /*
     Copy parts of the data from Master interface to locale block ram.
     These data are then processed:
@@ -375,15 +388,18 @@ void hog_acc(uint8_t *picture, objects *objectList){
 		computeHOG(imageBuffer,hist);
 		BlockSort(hist,BlockArray);
 		normBlock_L1(BlockArray);
-		classifyHOG(BlockArray, i,objectList);
+		classifyHOG(BlockArray, i,objectList,scale);
 	}
 }
 
-void top_level(uint8_t* picture,objects *objectList){
+void top_level(uint8_t* picture,objects *objectList,int scale,int w,int h){
 #pragma HLS INTERFACE ap_ctrl_none port=return
 #pragma HLS INTERFACE m_axi depth=32 port=objectList
 #pragma HLS INTERFACE m_axi depth=8 port=picture
-	hog_acc(picture,objectList);
+#pragma HLS INTERFACE s_axilite port=scale
+#pragma HLS INTERFACE s_axilite port=w
+#pragma HLS INTERFACE s_axilite port=h
+	hog_acc(picture,objectList,scale,w,h);
 
 }
 

@@ -65,7 +65,7 @@ def megaNegativeList(directory):
                 f.write(directory+filename+"|"+str(x)+"|"+str(y)+"|64|128\n")
     
 
-createPositiveList("/home/dennis/Downloads/GRAZ/HOG_database/Graz02_personen/")
+createPositiveList("/home/dennis/Databases/HOG_database/Graz02_personen/")
 #createPositiveList("/home/dennis/Downloads/person/")
 #createNegativeList("/home/dennis/Downloads/none/")
 #megaNegativeList("/home/dennis/Downloads/GRAZ/Graz02_none/")

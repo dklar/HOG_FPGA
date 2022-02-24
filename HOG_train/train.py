@@ -1,4 +1,5 @@
 import numpy as np
+import time
 import joblib
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import plot_precision_recall_curve
@@ -12,10 +13,10 @@ import matplotlib.pyplot as plt
 '''
     Change here the paths not in the functions!
 '''
-positiveFiles_acc = "/home/dennis/Schreibtisch/HOG_train_Aug/HOG_train/build/positive_acc.data"
-negativeFiles_acc = "/home/dennis/Schreibtisch/HOG_train_Aug/HOG_train/build/negative_acc.data"
-positiveFiles_apr = "/home/dennis/Schreibtisch/HOG_train_Aug/HOG_train/build/positive_apr.data"
-negativeFiles_apr = "/home/dennis/Schreibtisch/HOG_train_Aug/HOG_train/build/negative_apr.data"
+positiveFiles_acc = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_train/build/positive_acc.data"
+negativeFiles_acc = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_train/build/negative_acc.data"
+positiveFiles_apr = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_train/build/positive_apr.data"
+negativeFiles_apr = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_train/build/negative_apr.data"
 
 def trainAndSave(positiveFiles,negativeFiles,fileNameOutput):
     '''
@@ -63,10 +64,10 @@ def trainAndSave(positiveFiles,negativeFiles,fileNameOutput):
         numpyList = np.array(values,dtype=np.float)
 
         if np.any(np.isnan(numpyList)):
-            print("NAN in Neg.. skip example")
+            #print("NAN in Neg.. skip example")
             continue
         if (not np.any(np.isfinite(numpyList))):
-            print("oo in Neg.. skip example")
+            #print("oo in Neg.. skip example")
             continue
         dataNeg.append(numpyList)
         data.append(numpyList)
@@ -78,12 +79,14 @@ def trainAndSave(positiveFiles,negativeFiles,fileNameOutput):
     le = LabelEncoder()
     labels = le.fit_transform(labels)
 
-    print(" Constructing training/testing split...")
+    print("Constructing training/testing split...")
     (trainData, testData, trainLabels, testLabels) = train_test_split(np.array(data), labels, test_size=0.20, random_state=42)
-    print(" Training Linear SVM classifier...")
+    print("Training Linear SVM classifier...")
     model = LinearSVC()
+    start = time.time()
     model.fit(trainData, trainLabels)
-
+    stop = time.time()
+    print(f"Training time: {stop - start}s")
     print(" Evaluating classifier on test data ...")
     predictions = model.predict(testData)
     print(classification_report(testLabels, predictions))

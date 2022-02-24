@@ -113,9 +113,10 @@ void classifyHOG_apr(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageS
 
     const int cellPerWidth = MAX_WIDTH / pixelPerCell;
     const int NumberBlocksX= cellPerWidth / cellPerBlock;
+	const int limit = NumberBlocksX - BlocksPerWindowX;
 
     ap_fixed<16,4> Intercept = -0.27716787;
-    ap_fixed<16,4> classifier[] = {
+    ap_fixed<16,4> weights[] = {
     0.15061,-0.20561,-0.10163,-0.14403,0.19473,-0.08734,-0.24039,-0.25564,0.08457,0.36947,-0.05390,0.20649,-0.01303,0.45472,-0.02749,-0.24547,-0.18111,0.11844,0.12782,0.01664,-0.17207,
     -0.17627,0.07035,-0.04300,0.06975,-0.12144,0.37833,0.14161,-0.56742,-0.33982,-0.38881,0.02782,-0.07950,-0.14770,0.18130,0.72184,-0.38000,0.07637,-0.14601,-0.08344,-0.05547,-0.22044,
     -0.25144,-0.41544,0.01831,-0.21176,0.20102,0.25869,0.67906,0.62725,0.14415,0.28656,-0.25994,-0.24768,0.06255,0.02820,-0.36748,-0.19115,-0.26138,-0.28978,-0.24855,-0.32726,0.15861,
@@ -173,16 +174,19 @@ void classifyHOG_apr(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageS
     -0.46431,-0.12802,0.17499,0.19542,0.10341,0.11448,-0.18916,-0.09603,-0.09633,-0.23894,-0.01583,0.02400,-0.00281,-0.00409,0.14047,0.09977,-0.24355,-0.09462};
 
     int counter = 0;
-    int limit = NumberBlocksX - BlocksPerWindowX;
+    
     SVM_Loop:
 	for (int windowX = 0; windowX < limit; windowX++) {
 		ap_fixed<16, 4> sum = Intercept;
 		for (int y = 0; y < 8; y++) {
 			for (int x = 0; x < 4; x++) {
 				for (int i = 0; i < 36; i++) {
-					ap_fixed<16, 4> BlockArrayVal =
-							(ap_fixed<16, 4> ) BlockArray[y][x + windowX][i];
-					sum += BlockArrayVal * classifier[y * 144 + x * 36 + i];
+					ap_fixed<16, 4> BlockArrayVal = (ap_fixed<16, 4> ) BlockArray[y][x + windowX][i];
+					ap_fixed<16, 4> product;
+#pragma HLS RESOURCE variable=product core=Mul_LUT
+#pragma HLS RESOURCE variable=product core=FMul_nodsp
+					product = BlockArrayVal * weights[y * 144 + x * 36 + i];
+					sum += product;
 				}
 			}
 		}
