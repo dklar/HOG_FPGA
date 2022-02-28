@@ -1,4 +1,4 @@
-#include "stdint.h"
+//#include "stdint.h"
 #include "ap_int.h"
 #include "hls_math.h"
 #include "ap_fixed.h"
@@ -20,12 +20,8 @@ static const int anglesMax = 180;
 static const int BlocksPerWindowX = 4;
 static const int BlocksPerWindowY = 8;
 
-
 static const int WINDOW_HEIGHT = 128;
 static const int WINDOW_WIDTH  = 064;
-
-static const int NRCELLS_X 	= MAX_WIDTH 	/ pixelPerCell;		//100
-static const int NRCELLS_Y 	= WINDOW_HEIGHT / pixelPerCell;		//16
 
 
 struct pixelValue{
@@ -43,24 +39,22 @@ inline int MODULO(int a, int b) {
 	return res < 0 ? res + b : res;
 }
 
-
-
 /**
  * Berechne fuer ein Window den Gradienten, den Bin und die magnitude,
  *
  */
-void computeHOG(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT]) {
+void computeHOG(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int w,int h) {
 	int Gy, Gx;
     ComputeHOG_loop:
-	for (int y = 0; y < 128; y++) {
-		for (int x = 0; x < MAX_WIDTH; x++) {
+	for (int y = 0; y < SLIDE_HEIGHT; y++) {
+		for (int x = 0; x < w; x++) {
 #pragma HLS loop_tripcount avg=0 max=0
 			if (y == 0 || y == 127) {
 				Gy = 0;
 			} else {
 				Gy = (int) image[(y + 1) * MAX_WIDTH + x]- (int) image[(y - 1) * MAX_WIDTH + x];
 			}
-			if (x==0 || x >= MAX_WIDTH - 2) {
+			if (x==0 || x >= w - 2) {
 				Gx = 0;
 			} else {
 				Gx = (int) image[y * MAX_WIDTH + x + 1]- (int) image[y * MAX_WIDTH + x-1];
@@ -270,20 +264,18 @@ void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide
 
     int counter = 0;
 
+    SVM_Loop:
     for (int windowX = 0; windowX < limit; windowX++)
     {
         float sum = -0.17;
-        for (int y = 0; y < 8; y++)
-        {
-            for (int x = 0; x < 4; x++)
-            {
-                for (int i = 0; i < 36; i++)
-                {
+        for (int y = 0; y < 8; y++){
+            for (int x = 0; x < 4; x++){
+                for (int i = 0; i < 36; i++){
                 	float product;
+                    float BlockArrayVal = BlockArray[y][x + windowX][i];
 #pragma HLS RESOURCE variable=product core=Mul_LUT
 #pragma HLS RESOURCE variable=product core=FMul_nodsp
-                	product = BlockArray[y][x + windowX][i] * weights[y * 144 + x * 36 + i];
-
+                	product = BlockArrayVal * weights[y * 144 + x * 36 + i];
                     sum += product;
                 }
             }
@@ -380,12 +372,14 @@ void hog_acc(uint8_t *picture, objects *objectList,int scale,int w,int h){
     This will be repeated until the complete data from the iamge is read.
     It is advantageous that the height of the image is a multiple of 128
     */
+    pictureSlideLoop:
 	for (int i=0;i<(MAX_HEIGHT/128);i++){
+        #pragma HLS loop_tripcount avg=0 max=0
 		uint8_t imageBuffer[MAX_WIDTH*SLIDE_HEIGHT];
 		pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT];
 		float BlockArray[SLIDE_HEIGHT/16][MAX_WIDTH/16][angles*4];
-		memcpy(imageBuffer,picture+i*MAX_WIDTH,MAX_WIDTH*128*sizeof(uint8_t));
-		computeHOG(imageBuffer,hist);
+		memcpy(imageBuffer, picture+i*w*128, w*128*sizeof(uint8_t));
+		computeHOG(imageBuffer,hist,w,h);
 		BlockSort(hist,BlockArray);
 		normBlock_L1(BlockArray);
 		classifyHOG(BlockArray, i,objectList,scale);
