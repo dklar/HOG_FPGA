@@ -270,6 +270,7 @@ void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide
 
     int counter = 0;
 
+    SVM_Loop:
     for (int windowX = 0; windowX < limit; windowX++)
     {
         float sum = -0.17;
@@ -283,7 +284,6 @@ void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide
 #pragma HLS RESOURCE variable=product core=Mul_LUT
 #pragma HLS RESOURCE variable=product core=FMul_nodsp
                 	product = BlockArray[y][x + windowX][i] * weights[y * 144 + x * 36 + i];
-
                     sum += product;
                 }
             }
