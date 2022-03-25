@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 '''
     Change here the paths not in the functions!
 '''
-positiveFiles_acc = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_train/build/positive_acc.data"
-negativeFiles_acc = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_train/build/negative_acc.data"
-positiveFiles_apr = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_train/build/positive_apr.data"
-negativeFiles_apr = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_train/build/negative_apr.data"
+positiveFiles_acc = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_train/build/positive_acc_L1.data"
+negativeFiles_acc = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_train/build/negative_acc_L1.data"
+positiveFiles_apr = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_train/build/positive_apr_L1.data"
+negativeFiles_apr = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_train/build/negative_apr_L1.data"
 
 def trainAndSave(positiveFiles,negativeFiles,fileNameOutput):
     '''
@@ -82,7 +82,7 @@ def trainAndSave(positiveFiles,negativeFiles,fileNameOutput):
     print("Constructing training/testing split...")
     (trainData, testData, trainLabels, testLabels) = train_test_split(np.array(data), labels, test_size=0.20, random_state=42)
     print("Training Linear SVM classifier...")
-    model = LinearSVC()
+    model = LinearSVC(penalty='l1',dual=False)
     start = time.time()
     model.fit(trainData, trainLabels)
     stop = time.time()
@@ -240,7 +240,7 @@ def plotCurves():
     plt.show()
 
 #plotCurves()
-trainAndSave(positiveFiles_acc,negativeFiles_acc,"acc_classifier_graz")
-trainAndSave(positiveFiles_apr,negativeFiles_apr,"apr_classifier_graz")
+trainAndSave(positiveFiles_acc,negativeFiles_acc,"acc_classifier_graz_L1")
+trainAndSave(positiveFiles_apr,negativeFiles_apr,"apr_classifier_graz_L1")
 
 

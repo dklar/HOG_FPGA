@@ -1,3 +1,4 @@
 **/build
 *.npy
 *.jpg
+!/HOG_Capture/exampleData/*.jpg
