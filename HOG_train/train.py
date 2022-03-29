@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 '''
     Change here the paths not in the functions!
+    These variables contains the paths of the files with the output data of the HOG algorithm
 '''
 positiveFiles_acc = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_train/build/positive_acc_L1.data"
 negativeFiles_acc = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_train/build/negative_acc_L1.data"
@@ -33,48 +34,55 @@ def trainAndSave(positiveFiles,negativeFiles,fileNameOutput):
     data= []
     labels = []
 
-    dataPos = []
-    dataNeg = []
-
-    fpos = open(positiveFiles,'r')
-    lines = fpos.readlines()
-    for index, line in enumerate(lines):
-        line = line.strip()
+    '''
+        Open the values with the positive data for the training.
+    '''
+    print("Read positive file examples")
+    file = open(positiveFiles,'r')
+    lines = file.readlines()
+    for _, line in enumerate(lines):
+        line = line.strip() # next lines are string optimization remove whitespace....
         line = line[:-1]
         values = line.split(";")
-        numpyList = np.array(values,dtype=np.float)
-
+        numpyList = np.array(values,dtype=np.float)# This list contains the HOG values
+        
+        # Filter errors out of the list
         if np.any(np.isnan(numpyList)):
             print("NAN in Pos.. skip example")
             continue
         if (not np.any(np.isfinite(numpyList))):
             print("oo in Pos.. skip example")
             continue
-        dataPos.append(numpyList)
+        
+        #append correct data to final input arrays
         data.append(numpyList)
         labels.append(1)
-    fpos.close()
+    file.close()
+    
+    '''
+        Open the values with the negative data for the training.
+        Similar to the positive data training 
+    '''
     print("Read negative file examples")
-    fneg = open(negativeFiles,'r')
-    lines = fneg.readlines()
-    for index, line in enumerate(lines):
+    file = open(negativeFiles,'r')
+    lines = file.readlines()
+    for _, line in enumerate(lines):
         line = line.strip()
         line = line[:-1]
         values = line.split(";")
         numpyList = np.array(values,dtype=np.float)
-
         if np.any(np.isnan(numpyList)):
             #print("NAN in Neg.. skip example")
             continue
         if (not np.any(np.isfinite(numpyList))):
             #print("oo in Neg.. skip example")
             continue
-        dataNeg.append(numpyList)
         data.append(numpyList)
         labels.append(0)
-    fneg.close()
+    file.close()
     print("Reading data done...")
-
+    
+    # create an empty classifier and train them
 
     le = LabelEncoder()
     labels = le.fit_transform(labels)
@@ -82,17 +90,17 @@ def trainAndSave(positiveFiles,negativeFiles,fileNameOutput):
     print("Constructing training/testing split...")
     (trainData, testData, trainLabels, testLabels) = train_test_split(np.array(data), labels, test_size=0.20, random_state=42)
     print("Training Linear SVM classifier...")
-    model = LinearSVC(penalty='l1',dual=False)
-    start = time.time()
-    model.fit(trainData, trainLabels)
+    model = LinearSVC(penalty='l1',dual=False)#select model
+    start = time.time()# measure training time
+    model.fit(trainData, trainLabels) #train
     stop = time.time()
     print(f"Training time: {stop - start}s")
     print(" Evaluating classifier on test data ...")
     predictions = model.predict(testData)
+    #Evaluation and writing them back to a cpp file for hls
     print(classification_report(testLabels, predictions))
-
-    file = open(fileNameOutput+".cpp",'w')
-    classifier = model.coef_[0]
+    file = open(fileNameOutput+".cpp", 'w')
+    classifier = model.coef_[0] #get values out of the model
     intercept = model.intercept_
     count = 0
     file.write("float Intercept = {};\n".format(intercept))
@@ -106,7 +114,10 @@ def trainAndSave(positiveFiles,negativeFiles,fileNameOutput):
             count=0
     file.close()
 
+    #backup format for python intern usage
     joblib.dump(model, fileNameOutput+".npy")
+
+# Next to functions are for plotting and evaluation
 
 def Precision_Recall_curve_plot(testData, testLabels, model):
     y_score = model.decision_function(testData)
