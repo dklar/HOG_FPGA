@@ -27,8 +27,8 @@ void readSampleData(string path){
         fstream f(name.c_str());
         if (f.good()){
             Mat image = imread(name,IMREAD_GRAYSCALE);
-            Save_HOG_Values_apr(image,"positive_apr.data",9,8,2);
-            Save_HOG_Values(image,"positive_acc.data",9,8,2);
+            Save_HOG_Values_apr(image,"positive_apr_L2.data",9,8,2,"L2");
+            Save_HOG_Values(image,"positive_acc_L2.data",9,8,2,"L2");
         }else{
             break;
         }
@@ -39,8 +39,8 @@ void readSampleData(string path){
         fstream f(name.c_str());
         if (f.good()){
             Mat image = imread(name,IMREAD_GRAYSCALE);
-            Save_HOG_Values_apr(image,"negative_apr.data",9,8,2);
-            Save_HOG_Values(image,"negative_acc.data",9,8,2);
+            Save_HOG_Values_apr(image,"negative_apr_L2.data",9,8,2,"L2");
+            Save_HOG_Values(image,"negative_acc_L2.data",9,8,2,"L2");
         }else{
             break;
         }
@@ -56,7 +56,7 @@ int main(int, char**) {
     remove("negative_apr.data");
     std::cout << "Create new ones...\n";
     //string path = "/home/dennis/Schreibtisch/HOG_train_Aug/HOG_Capture/Database/";
-    string path = "/home/dennis/Schreibtisch/HOG_train_Aug/HOG_Capture/Database_new/";
+    string path = "/home/dennis/Schreibtisch/HOG_FPGA/HOG_Capture/Database/";
     readSampleData(path);
     std::cout << "Done...\n";
     return 0;
