@@ -1,0 +1,4 @@
+execute.py
+    calls the /build/hog for each picture in the folder
+zuschneiden.py
+    Rescale the images to the correct size

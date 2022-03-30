@@ -241,17 +241,20 @@ def plotCurves():
     model_apr.fit(trainData_apr, trainLabels_apr)
 
     fig, ax_det = plt.subplots()
-    plot_det_curve(model_acc, testData_acc, testLabels_acc, ax=ax_det, name="Accurate")
-    plot_det_curve(model_apr, testData_apr, testLabels_apr, ax=ax_det, name="Approximate")
+    plot_det_curve(model_acc, testData_acc, testLabels_acc,ax=ax_det, name="Accurate")
+    plot_det_curve(model_apr, testData_apr, testLabels_apr,ax=ax_det, name="Approximate")
 
     ax_det.set_title('Detection Error Tradeoff (DET) curves')
     ax_det.grid(linestyle='--')
-
+    #plt.rc('legend', fontsize=16)
+    ax_det.title.set_fontsize(16)
+    ax_det.xaxis.label.set_fontsize(16)
+    ax_det.yaxis.label.set_fontsize(16)
     plt.legend()
     plt.show()
 
-#plotCurves()
-trainAndSave(positiveFiles_acc,negativeFiles_acc,"acc_classifier_graz_L1")
-trainAndSave(positiveFiles_apr,negativeFiles_apr,"apr_classifier_graz_L1")
+plotCurves()
+#trainAndSave(positiveFiles_acc,negativeFiles_acc,"acc_classifier_graz_L1")
+#trainAndSave(positiveFiles_apr,negativeFiles_apr,"apr_classifier_graz_L1")
 
 
