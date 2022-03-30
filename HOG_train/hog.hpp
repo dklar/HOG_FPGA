@@ -240,7 +240,7 @@ float cell_hog1(Mat magnitude,Mat orientation, int binNr,int row_offset, int col
  * @param pixelPerCell Pixel per cell (Normally 8)
  * @param cellPerBlock Cells per block (normally 2)
  */
-void Save_HOG_Values(Mat image,string filename,int nrOrientation,int pixelPerCell,int cellPerBlock){
+void Save_HOG_Values(Mat image,string filename,int nrOrientation,int pixelPerCell,int cellPerBlock,string mode = "L1"){
     Mat gx = gradientX(image);
     Mat gy = gradientY(image);
 
@@ -344,7 +344,7 @@ void Save_HOG_Values(Mat image,string filename,int nrOrientation,int pixelPerCel
     file.close();
 }
 
-void Save_HOG_Values_apr(Mat image,string filename,int nrOrientation,int pixelPerCell,int cellPerBlock){
+void Save_HOG_Values_apr(Mat image,string filename,int nrOrientation,int pixelPerCell,int cellPerBlock,string mode = "L1"){
     Mat gx = gradientX(image);
     Mat gy = gradientY(image);
 
@@ -426,7 +426,7 @@ void Save_HOG_Values_apr(Mat image,string filename,int nrOrientation,int pixelPe
     //====================================================================
     for (int y = 0; y < NumberBlocksY; y++)
         for (int x = 0; x < NumberBlocksX; x++)
-            normalizeCell(Blockhistogram[y][x],36);//4 Block times 9 angular bins
+            normalizeCell(Blockhistogram[y][x],36,mode);//4 Block times 9 angular bins
 
 
     ofstream file;
