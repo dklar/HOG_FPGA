@@ -40,8 +40,12 @@ inline int MODULO(int a, int b) {
 }
 
 /**
- * Berechne fuer ein Window den Gradienten, den Bin und die magnitude,
- *
+ * @brief Calculate the HOG features for an image slide
+ * 
+ * @param image input image
+ * @param hist adress to write the output data
+ * @param w width of the image slide
+ * @param h height of the image slide
  */
 void computeHOG(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int w,int h) {
 	int Gy, Gx;
@@ -49,6 +53,9 @@ void computeHOG(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int w,int
 	for (int y = 0; y < SLIDE_HEIGHT; y++) {
 		for (int x = 0; x < w; x++) {
 #pragma HLS loop_tripcount avg=0 max=0
+			/*
+				Gradient calculation
+			*/
 			if (y == 0 || y == 127) {
 				Gy = 0;
 			} else {
@@ -59,10 +66,13 @@ void computeHOG(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int w,int
 			} else {
 				Gx = (int) image[y * MAX_WIDTH + x + 1]- (int) image[y * MAX_WIDTH + x-1];
 			}
-
+			/*
+				magnitude and orientation calculation
+			*/
 			int orientation = MODULO(   (int) hls::nearbyint(hls::atan2f(Gy,Gx)*57.29578049),anglesMax);
 			int magnitude   =           (int) hls::nearbyint(hls::sqrtf(Gx*Gx+Gy*Gy));
 			int binposition = 0;
+            // Assign current value to bin position
 			if (orientation < 20) {
 				binposition = 0;
 			} else if (orientation < 40) {
@@ -89,8 +99,17 @@ void computeHOG(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int w,int
 	}
 }
 
+/**
+ * @brief SVM score calculation.
+ * 
+ * @param BlockArray HOG values
+ * @param imageSlide image slide for the current position in the image
+ * @param objectList List for writing back detected objects
+ * @param scale Scale factor of the image pyramid 
+ */
 void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide,objects *objectList,int scale)
 {
+
     const int cellPerWidth = MAX_WIDTH / pixelPerCell;
     const int NumberBlocksX= cellPerWidth / cellPerBlock;
     const int limit = NumberBlocksX - BlocksPerWindowX;
@@ -263,7 +282,10 @@ void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide
                 -0.2073987497314942, 0.04596546369922206, 0.2454984254108476, 0.7313924023370342, 0.1425645717684907, -0.13441071786058473, -0.3767433892508108, 0.05601490209182387};
 
     int counter = 0;
-
+    /*
+     * Calculate the score of one window 
+     * Go through the detection window and calcuate the score
+     */
     SVM_Loop:
     for (int windowX = 0; windowX < limit; windowX++)
     {
@@ -273,13 +295,14 @@ void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide
                 for (int i = 0; i < 36; i++){
                 	float product;
                     float BlockArrayVal = BlockArray[y][x + windowX][i];
-#pragma HLS RESOURCE variable=product core=Mul_LUT
-#pragma HLS RESOURCE variable=product core=FMul_nodsp
+//#pragma HLS RESOURCE variable=product core=Mul_LUT
+//#pragma HLS RESOURCE variable=product core=FMul_nodsp
                 	product = BlockArrayVal * weights[y * 144 + x * 36 + i];
                     sum += product;
                 }
             }
         }
+        // if the score is big enough, a object is detected, add them to the list with information needed to backconvert information
         if (sum > 1.0){
             objectList[counter].score = sum;
             objectList[counter].x = windowX * 16;
@@ -304,7 +327,7 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],float (*BlockArray)[MAX_W
                     binsum[current_val.bin] +=current_val.mag;
                 }
 			}
-            for (int i = 0; i < 9; i++){//normiere, setzte auf null, schreibe wert
+            for (int i = 0; i < 9; i++){
                 BlockArray[y / 16][x / 16][i] = binsum[i];// / 64.;
                 binsum[i] = 0;
             }
@@ -361,6 +384,15 @@ void normBlock_L1(float (*BlockArray)[MAX_WIDTH / 16][angles * 4]) {
 	}
 }
 
+/**
+ * @brief Calculated (the HOG) and classify (SVM) the image.
+ * 
+ * @param picture pointer to the picture data
+ * @param objectList pointer to the at the beginning empty List of detected objects
+ * @param scale Current scale factor for downsizeing the image. Used to determine the correct position 
+ * @param w Current width of the image data. By adapting the image pyramid the value is shrinking. 
+ * @param h Current height of the image data. By adapting the image pyramid the value is shrinking.
+ */
 void hog_acc(uint8_t *picture, objects *objectList,int scale,int w,int h){
     /*
     Copy parts of the data from Master interface to locale block ram.
@@ -386,6 +418,18 @@ void hog_acc(uint8_t *picture, objects *objectList,int scale,int w,int h){
 	}
 }
 
+
+/**
+ * @brief Top level functions for synthesis.
+ * The module copies the data from the master interface to the local Block RAM, 
+ * via a axi lite interface the information of the current state of the image pyramid is passed.
+ * 
+ * @param picture adress of the picture
+ * @param objectList List for detected objects
+ * @param scale State of the image pyramid (shrinking factor)
+ * @param w State of the image pyramid (current width of the picture)
+ * @param h State of the image pyramid (current height of the picture)
+ */
 void top_level(uint8_t* picture,objects *objectList,int scale,int w,int h){
 #pragma HLS INTERFACE ap_ctrl_none port=return
 #pragma HLS INTERFACE m_axi depth=32 port=objectList

@@ -91,6 +91,14 @@ int atan2_apr(int y, int x) {
 	}
 }
 
+/**
+ * @brief SVM score calculation.
+ * 
+ * @param BlockArray HOG values
+ * @param imageSlide image slide for the current position in the image
+ * @param objectList List for writing back detected objects
+ * @param scale Scale factor of the image pyramid 
+ */
 void classifyHOG_apr(fix16 (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide,objects *objectList,int scale)
 {
 
@@ -157,22 +165,26 @@ void classifyHOG_apr(fix16 (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageS
     -0.46431,-0.12802,0.17499,0.19542,0.10341,0.11448,-0.18916,-0.09603,-0.09633,-0.23894,-0.01583,0.02400,-0.00281,-0.00409,0.14047,0.09977,-0.24355,-0.09462};
 
     uint16_t counter = 0;
-    
+    /*
+     * Calculate the score of one window 
+     * Go through the detection window and calcuate the score
+     */
     SVM_Loop:
 	for (int windowX = 0; windowX < limit; windowX++) {
-		ap_fixed<16, 4> sum = Intercept;
+		fix16 sum = Intercept;
 		for (int y = 0; y < 8; y++) {
 			for (int x = 0; x < 4; x++) {
 				for (int i = 0; i < 36; i++) {
 					fix16 BlockArrayVal = (fix16) BlockArray[y][x + windowX][i];
 					fix16 product;
-#pragma HLS RESOURCE variable=product core=Mul_LUT
-#pragma HLS RESOURCE variable=product core=FMul_nodsp
+//#pragma HLS RESOURCE variable=product core=Mul_LUT
+//#pragma HLS RESOURCE variable=product core=FMul_nodsp
 					product = BlockArrayVal * weights[y * 144 + x * 36 + i];
 					sum += product;
 				}
 			}
 		}
+		// if the score is big enough, a object is detected, add them to the list with information needed to backconvert information
 		if (sum > 1.0) {
 			objectList[counter].score = sum;
 			objectList[counter].x = windowX * 16;
@@ -183,12 +195,23 @@ void classifyHOG_apr(fix16 (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageS
 	}
 }
 
+/**
+ * @brief Calculate the HOG features for an image slide
+ * 
+ * @param image input image
+ * @param hist adress to write the output data
+ * @param w width of the image slide
+ * @param h height of the image slide
+ */
 void computeHOG_apr(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int w,int h) {
 	int Gy, Gx;
 	ComputeHOG_loop:
 	for (int y = 0; y < SLIDE_HEIGHT; y++) {
 		for (int x = 0; x < w; x++) {
 #pragma HLS loop_tripcount avg=0 max=0
+			/*
+				Gradient calculation
+			*/
 			if (y == 0 || y == 127) {
 				Gy = 0;
 			} else {
@@ -199,7 +222,9 @@ void computeHOG_apr(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int w
 			} else {
 				Gx = (int) image[y * w + x + 1]- (int) image[y * w + x-1];
 			}
-
+			/*
+				magnitude and orientation calculation
+			*/
 			int magnitude   = hls::abs(Gx)+hls::abs(Gy);
 			int binposition = atan2_apr(Gy, Gx);
 			hist[y*w + x].bin = binposition;
@@ -223,7 +248,7 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],float (*BlockArray)[MAX_W
                     binsum[current_val.bin] +=current_val.mag;
                 }
 			}
-            for (int i = 0; i < 9; i++){//normiere, setzte auf null, schreibe wert
+            for (int i = 0; i < 9; i++){
                 BlockArray[y / 16][x / 16][i] = binsum[i];// / 64.;
                 binsum[i] = 0;
             }
@@ -279,7 +304,7 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],fix16 (*BlockArray)[MAX_W
                     binsum[current_val.bin] +=current_val.mag;
                 }
 			}
-            for (int i = 0; i < 9; i++){//normiere, setzte auf null, schreibe wert
+            for (int i = 0; i < 9; i++){
                 BlockArray[y / 16][x / 16][i] = binsum[i];// / 64.;
                 binsum[i] = 0;
             }
@@ -335,7 +360,7 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int (*BlockArray)[MAX_WID
                     binsum[current_val.bin] +=current_val.mag;
                 }
 			}
-            for (int i = 0; i < 9; i++){//normiere, setzte auf null, schreibe wert
+            for (int i = 0; i < 9; i++){
                 BlockArray[y / 16][x / 16][i] = binsum[i];// / 64.;
                 binsum[i] = 0;
             }
@@ -474,6 +499,17 @@ void HOG_apr(uint8_t *picture, objects *objectList,int scale,int w,int h){
 
 }
 
+/**
+ * @brief Top level functions for synthesis.
+ * The module copies the data from the master interface to the local Block RAM, 
+ * via a axi lite interface the information of the current state of the image pyramid is passed.
+ * 
+ * @param picture adress of the picture
+ * @param objectList List for detected objects
+ * @param scale State of the image pyramid (shrinking factor)
+ * @param w State of the image pyramid (current width of the picture)
+ * @param h State of the image pyramid (current height of the picture)
+ */
 void top_level(uint8_t* picture,objects *objectList,int scale,int w,int h){
 #pragma HLS INTERFACE ap_ctrl_none port=return
 #pragma HLS INTERFACE m_axi depth=32 port=objectList
