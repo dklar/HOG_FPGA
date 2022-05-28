@@ -11,9 +11,6 @@ static const int SLIDE_HEIGHT = 128;
 static const int pixelPerCell = 8;
 static const int cellPerBlock = 2;
 
-static const int cellPerHeight_MAX = MAX_HEIGHT / pixelPerCell;
-static const int cellPerWidth_MAX  = MAX_WIDTH  / pixelPerCell;
-
 static const int angles = 9;
 static const int anglesMax = 180;
 
@@ -35,6 +32,7 @@ struct objects
 };
 
 inline int MODULO(int a, int b) {
+    //modulo for neagtive numbers
 	int res = a % b;
 	return res < 0 ? res + b : res;
 }
@@ -92,6 +90,7 @@ void computeHOG(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int w,int
 			} else {
 				binposition = 8;
 			}
+            //assign the current values to the blockram
 			hist[y*MAX_WIDTH + x].bin = binposition;
 			hist[y*MAX_WIDTH + x].mag = magnitude;
 		}
@@ -110,9 +109,8 @@ void computeHOG(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int w,int
 void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide,objects *objectList,int scale)
 {
 
-    const int cellPerWidth = MAX_WIDTH / pixelPerCell;
-    const int NumberBlocksX= cellPerWidth / cellPerBlock;
-    const int limit = NumberBlocksX - BlocksPerWindowX;
+    const int cellsPerLine = MAX_WIDTH / pixelPerCell;// How many cells fit in one line
+    const int limit = (cellsPerLine / cellPerBlock) - BlocksPerWindowX;//How many slideing windows fit in one line
 
     float Intercept = -0.17;
     float weights[] = {0.38659216557681786, -0.17765256024752688, -0.3303109657526789, -0.25685432111625195, 0.6965258327808991,
@@ -289,7 +287,7 @@ void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide
     SVM_Loop:
     for (int windowX = 0; windowX < limit; windowX++)
     {
-        float sum = -0.17;
+        float sum = Intercept;
         for (int y = 0; y < 8; y++){
             for (int x = 0; x < 4; x++){
                 for (int i = 0; i < 36; i++){
@@ -313,6 +311,9 @@ void classifyHOG(float (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide
     }
 }
 
+/**
+ *Sort and accumulate the magnitudes to the coresponding bin of each cell
+ **/
 void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],float (*BlockArray)[MAX_WIDTH/16][angles*4]) {
     int binsum[angles];
     memset((void *)binsum,0,sizeof(int)*angles);
@@ -320,15 +321,15 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],float (*BlockArray)[MAX_W
     for (int y = 0; y < SLIDE_HEIGHT; y+=16) {
 		for (int x = 0; x < MAX_WIDTH; x+=16) {
 #pragma HLS loop_tripcount avg=0 max=0
-			ComputeCell1:
-			for(int i=0;i<8;i++){//(0,0) bis (8,8)
-				for(int j=0;j<8;j++){
+			ComputeCell1://Cell 1 (0,0) to (8,8)
+			for(int i=0;i<8;i++){//go through the histogram 
+				for(int j=0;j<8;j++){// put current magnitude of pixel to the coressponding bin. indircetly given by the positon of the binsum array
                     pixelValue current_val = hist[(y + i) * MAX_WIDTH + x + j];
                     binsum[current_val.bin] +=current_val.mag;
                 }
 			}
             for (int i = 0; i < 9; i++){
-                BlockArray[y / 16][x / 16][i] = binsum[i];// / 64.;
+                BlockArray[y / 16][x / 16][i] = binsum[i];
                 binsum[i] = 0;
             }
             ComputeCell2:
@@ -339,7 +340,7 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],float (*BlockArray)[MAX_W
                 }
 			}
             for (int i = 0; i < 9; i++){
-                BlockArray[y / 16][(x /16)][i+9] = binsum[i];// / 64.;
+                BlockArray[y / 16][(x /16)][i+9] = binsum[i];
                 binsum[i] = 0;
             }
             ComputeCell3:
@@ -350,7 +351,7 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],float (*BlockArray)[MAX_W
                 }
 			}
             for (int i = 0; i < 9; i++){
-                BlockArray[(y / 16)][x / 16][i+18] = binsum[i];// / 64.;
+                BlockArray[(y / 16)][x / 16][i+18] = binsum[i];
                 binsum[i] = 0;
             }
             ComputeCell4:
@@ -361,7 +362,7 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],float (*BlockArray)[MAX_W
                 }
 			}
             for (int i = 0; i < 9; i++){
-                BlockArray[(y / 16)][(x / 16)][i+27] = binsum[i];// / 64.;
+                BlockArray[(y / 16)][(x / 16)][i+27] = binsum[i];
                 binsum[i] = 0;
             }
 		}
@@ -424,7 +425,7 @@ void hog_acc(uint8_t *picture, objects *objectList,int scale,int w,int h){
  * The module copies the data from the master interface to the local Block RAM, 
  * via a axi lite interface the information of the current state of the image pyramid is passed.
  * 
- * @param picture adress of the picture
+ * @param adress of the picture
  * @param objectList List for detected objects
  * @param scale State of the image pyramid (shrinking factor)
  * @param w State of the image pyramid (current width of the picture)

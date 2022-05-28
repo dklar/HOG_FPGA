@@ -11,9 +11,6 @@ static const int SLIDE_HEIGHT = 128;
 static const int pixelPerCell = 8;
 static const int cellPerBlock = 2;
 
-static const int cellPerHeight_MAX = MAX_HEIGHT / pixelPerCell;
-static const int cellPerWidth_MAX  = MAX_WIDTH  / pixelPerCell;
-
 static const int angles = 9;
 static const int anglesMax = 180;
 
@@ -23,11 +20,14 @@ static const int BlocksPerWindowY = 8;
 static const int WINDOW_HEIGHT = 128;
 static const int WINDOW_WIDTH  = 064;
 
-
+/**
+ * Object to store the information for each pixel (Bin and Magnitude )
+ **/
 struct pixelValue{
 	uint8_t bin = 0;
 	uint16_t mag = 0;
 };
+
 struct objects
 {
     int x,y,scale;
@@ -36,6 +36,10 @@ struct objects
 
 typedef ap_fixed<16, 4> fix16;
 
+/**
+ * Aproximate arctan function
+ * Returns the bin the angle is in
+ **/
 int atan2_apr(int y, int x) {
 	if (x == 0 && y == 0) {
 		return 0;
@@ -102,9 +106,8 @@ int atan2_apr(int y, int x) {
 void classifyHOG_apr(fix16 (*BlockArray)[MAX_WIDTH / 16][angles * 4], int imageSlide,objects *objectList,int scale)
 {
 
-    const int cellPerWidth = MAX_WIDTH / pixelPerCell;
-    const int NumberBlocksX= cellPerWidth / cellPerBlock;
-	const int limit = NumberBlocksX - BlocksPerWindowX;
+    const int cellsPerLine = MAX_WIDTH / pixelPerCell;// How many cells fit in one line
+    const int limit = (cellsPerLine / cellPerBlock) - BlocksPerWindowX;//How many slideing windows fit in one line
 
 	fix16 Intercept = -0.277;
 	fix16 weights[] = {
@@ -209,9 +212,8 @@ void computeHOG_apr(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int w
 	for (int y = 0; y < SLIDE_HEIGHT; y++) {
 		for (int x = 0; x < w; x++) {
 #pragma HLS loop_tripcount avg=0 max=0
-			/*
-				Gradient calculation
-			*/
+
+			//Gradient calculation
 			if (y == 0 || y == 127) {
 				Gy = 0;
 			} else {
@@ -222,11 +224,12 @@ void computeHOG_apr(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int w
 			} else {
 				Gx = (int) image[y * w + x + 1]- (int) image[y * w + x-1];
 			}
-			/*
-				magnitude and orientation calculation
-			*/
+
+			//magnitude and orientation calculation
 			int magnitude   = hls::abs(Gx)+hls::abs(Gy);
 			int binposition = atan2_apr(Gy, Gx);
+
+			//assign the current values to the blockram
 			hist[y*w + x].bin = binposition;
 			hist[y*w + x].mag = magnitude;
 		}
@@ -234,6 +237,9 @@ void computeHOG_apr(uint8_t *image,pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int w
 	}
 }
 
+/**
+ *Sort and accumulate the magnitudes to the coresponding bin of each cell
+ **/
 void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],float (*BlockArray)[MAX_WIDTH/16][angles*4]) {
     int binsum[angles];
     memset((void *)binsum,0,sizeof(int)*angles);
@@ -241,48 +247,48 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],float (*BlockArray)[MAX_W
     for (int y = 0; y < SLIDE_HEIGHT; y+=16) {
 		for (int x = 0; x < MAX_WIDTH; x+=16) {
 #pragma HLS loop_tripcount avg=0 max=0
-			ComputeCell1:
-			for(int i=0;i<8;i++){//(0,0) bis (8,8)
-				for(int j=0;j<8;j++){
+			ComputeCell1://Cell 1 (0,0) to (8,8)
+			for(int i=0;i<8;i++){//go through the histogram 
+				for(int j=0;j<8;j++){// put current magnitude of pixel to the coressponding bin. indircetly given by the positon of the binsum array
                     pixelValue current_val = hist[(y + i) * MAX_WIDTH + x + j];
                     binsum[current_val.bin] +=current_val.mag;
                 }
 			}
             for (int i = 0; i < 9; i++){
-                BlockArray[y / 16][x / 16][i] = binsum[i];// / 64.;
+                BlockArray[y / 16][x / 16][i] = binsum[i];
                 binsum[i] = 0;
             }
             ComputeCell2:
-            for(int i=0;i<8;i++){//(0,8) bis (8,16)
+            for(int i=0;i<8;i++){//(0,8) to (8,16)
 				for(int j=8;j<16;j++){
                     pixelValue current_val = hist[(y + i) * MAX_WIDTH + x + j];
                     binsum[current_val.bin] +=current_val.mag;
                 }
 			}
             for (int i = 0; i < 9; i++){
-                BlockArray[y / 16][(x /16)][i+9] = binsum[i];// / 64.;
+                BlockArray[y / 16][(x /16)][i+9] = binsum[i];
                 binsum[i] = 0;
             }
             ComputeCell3:
-            for(int i=8;i<16;i++){//(8,0) bis (16,8)
+            for(int i=8;i<16;i++){//(8,0) to (16,8)
 				for(int j=0;j<8;j++){
                     pixelValue current_val = hist[(y + i) * MAX_WIDTH + x + j];
                     binsum[current_val.bin] +=current_val.mag;
                 }
 			}
             for (int i = 0; i < 9; i++){
-                BlockArray[(y / 16)][x / 16][i+18] = binsum[i];// / 64.;
+                BlockArray[(y / 16)][x / 16][i+18] = binsum[i];
                 binsum[i] = 0;
             }
             ComputeCell4:
-            for(int i=8;i<16;i++){//(8,8) bis (16,16)
+            for(int i=8;i<16;i++){//(8,8) to (16,16)
 				for(int j=8;j<16;j++){
                     pixelValue current_val = hist[(y + i) * MAX_WIDTH + x + j];
                     binsum[current_val.bin] +=current_val.mag;
                 }
 			}
             for (int i = 0; i < 9; i++){
-                BlockArray[(y / 16)][(x / 16)][i+27] = binsum[i];// / 64.;
+                BlockArray[(y / 16)][(x / 16)][i+27] = binsum[i];
                 binsum[i] = 0;
             }
 		}
@@ -290,6 +296,9 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],float (*BlockArray)[MAX_W
 
 }
 
+/**
+ *Sort and accumulate the magnitudes to the coresponding bin of each cell
+ **/
 void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],fix16 (*BlockArray)[MAX_WIDTH/16][angles*4]) {
     int binsum[angles];
     memset((void *)binsum,0,sizeof(int)*angles);
@@ -297,9 +306,9 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],fix16 (*BlockArray)[MAX_W
     for (int y = 0; y < SLIDE_HEIGHT; y+=16) {
 		for (int x = 0; x < MAX_WIDTH; x+=16) {
 #pragma HLS loop_tripcount avg=0 max=0
-			ComputeCell1:
-			for(int i=0;i<8;i++){//(0,0) bis (8,8)
-				for(int j=0;j<8;j++){
+			ComputeCell1://Cell 1 (0,0) to (8,8)
+			for(int i=0;i<8;i++){//go through the histogram 
+				for(int j=0;j<8;j++){// put current magnitude of pixel to the coressponding bin. indircetly given by the positon of the binsum array
                     pixelValue current_val = hist[(y + i) * MAX_WIDTH + x + j];
                     binsum[current_val.bin] +=current_val.mag;
                 }
@@ -346,6 +355,9 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],fix16 (*BlockArray)[MAX_W
 
 }
 
+/**
+ *Sort and accumulate the magnitudes to the coresponding bin of each cell
+ **/
 void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int (*BlockArray)[MAX_WIDTH/16][angles*4]) {
     int binsum[angles];
     memset((void *)binsum,0,sizeof(int)*angles);
@@ -353,15 +365,15 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int (*BlockArray)[MAX_WID
     for (int y = 0; y < SLIDE_HEIGHT; y+=16) {
 		for (int x = 0; x < MAX_WIDTH; x+=16) {
 #pragma HLS loop_tripcount avg=0 max=0
-			ComputeCell1:
-			for(int i=0;i<8;i++){//(0,0) bis (8,8)
-				for(int j=0;j<8;j++){
+			ComputeCell1://Cell 1 (0,0) to (8,8)
+			for(int i=0;i<8;i++){//go through the histogram 
+				for(int j=0;j<8;j++){// put current magnitude of pixel to the coressponding bin. indircetly given by the positon of the binsum array
                     pixelValue current_val = hist[(y + i) * MAX_WIDTH + x + j];
                     binsum[current_val.bin] +=current_val.mag;
                 }
 			}
             for (int i = 0; i < 9; i++){
-                BlockArray[y / 16][x / 16][i] = binsum[i];// / 64.;
+                BlockArray[y / 16][x / 16][i] = binsum[i];;
                 binsum[i] = 0;
             }
             ComputeCell2:
@@ -372,7 +384,7 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int (*BlockArray)[MAX_WID
                 }
 			}
             for (int i = 0; i < 9; i++){
-                BlockArray[y / 16][(x /16)][i+9] = binsum[i];// / 64.;
+                BlockArray[y / 16][(x /16)][i+9] = binsum[i];
                 binsum[i] = 0;
             }
             ComputeCell3:
@@ -383,7 +395,7 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int (*BlockArray)[MAX_WID
                 }
 			}
             for (int i = 0; i < 9; i++){
-                BlockArray[(y / 16)][x / 16][i+18] = binsum[i];// / 64.;
+                BlockArray[(y / 16)][x / 16][i+18] = binsum[i];
                 binsum[i] = 0;
             }
             ComputeCell4:
@@ -394,7 +406,7 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int (*BlockArray)[MAX_WID
                 }
 			}
             for (int i = 0; i < 9; i++){
-                BlockArray[(y / 16)][(x / 16)][i+27] = binsum[i];// / 64.;
+                BlockArray[(y / 16)][(x / 16)][i+27] = binsum[i];
                 binsum[i] = 0;
             }
 		}
@@ -402,7 +414,13 @@ void BlockSort(pixelValue hist[MAX_WIDTH*SLIDE_HEIGHT],int (*BlockArray)[MAX_WID
 
 }
 
+/**
+ * Noramlization algorithm 
+ **/
 void normBlock_L1(fix16 (*BlockArray)[MAX_WIDTH / 16][angles * 4]) {
+	/*Normalization accumlate every value in the vector
+	*then divide each vector value by the sum 
+	*/
 	for (int i = 0; i < SLIDE_HEIGHT / 16; i++) {
 		for (int j = 0; j < MAX_WIDTH / 16; j++) {
 #pragma HLS loop_tripcount avg=0 max=0
@@ -416,7 +434,9 @@ void normBlock_L1(fix16 (*BlockArray)[MAX_WIDTH / 16][angles * 4]) {
 		}
 	}
 }
-
+/**
+ * Noramlization algorithm 
+ **/
 void normBlock_L1_sqrt(float (*BlockArray)[MAX_WIDTH / 16][angles * 4]) {
 	for (int i = 0; i < SLIDE_HEIGHT / 16; i++) {
 		for (int j = 0; j < MAX_WIDTH / 16; j++) {
@@ -426,28 +446,35 @@ void normBlock_L1_sqrt(float (*BlockArray)[MAX_WIDTH / 16][angles * 4]) {
 				sum += hls::abs(BlockArray[i][j][k]);
 			}
 			for (int k = 0; k < angles * 4; k++) {
-				BlockArray[i][j][k] = BlockArray[i][j][k] / sum;
+				BlockArray[i][j][k] = BlockArray[i][j][k] / hls::sqrt(sum);
 			}
 		}
 	}
 }
-
+/**
+ * Noramlization algorithm 
+ **/
 void normBlock_L2(float (*BlockArray)[MAX_WIDTH / 16][angles * 4]) {
 	for (int i = 0; i < SLIDE_HEIGHT / 16; i++) {
 		for (int j = 0; j < MAX_WIDTH / 16; j++) {
 #pragma HLS loop_tripcount avg=0 max=0
 			float sum = 0;
 			for (int k = 0; k < angles * 4; k++) {
-				sum += hls::abs(BlockArray[i][j][k]);
+				sum += BlockArray[i][j][k]*BlockArray[i][j][k];
 			}
 			for (int k = 0; k < angles * 4; k++) {
-				BlockArray[i][j][k] = BlockArray[i][j][k] / sum;
+				BlockArray[i][j][k] = BlockArray[i][j][k] / hls::sqrt(sum);
 			}
 		}
 	}
 }
-
+/**
+ * Noramlization algorithm 
+ **/
 void normBlock_L1(int (*BlockArray)[MAX_WIDTH / 16][angles * 4]) {
+	/*Normalization accumlate every value in the vector
+	*then divide each vector value by the sum 
+	*/
 	NormLoop:
 	for (int i = 0; i < SLIDE_HEIGHT / 16; i++) {
 		for (int j = 0; j < MAX_WIDTH / 16; j++) {
@@ -475,7 +502,7 @@ void normBlock_L1(int (*BlockArray)[MAX_WIDTH / 16][angles * 4]) {
  */
 void HOG_apr(uint8_t *picture, objects *objectList,int scale,int w,int h){
 	/*
-    Copy parts of the data from Master interface to locale block ram.
+    Copy parts of the data from Master interface to local block ram.
     These data are then processed:
         Compute the gradient magnitude.
         Sort the gradient & magnitude per block
